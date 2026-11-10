@@ -1,0 +1,139 @@
+/* 云游织图设计 token。
+ *
+ * 视觉世界：薄荷日光 / Fresh Atlas。
+ * 米白纸面 + 薄荷/鼠尾草 + 深海绿行动色 + 海玻璃蓝辅助；
+ * 暖杏只做价格标签和路线点缀，正文用深松墨。
+ */
+
+@font-face {
+  font-family: "Albert Sans";
+  src: url("../assets/fonts/albertsans.ttf") format("truetype");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Alumni Sans";
+  src: url("../assets/fonts/alumnisans.ttf") format("truetype");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../assets/fonts/jetbrainsmono.ttf") format("truetype");
+  font-weight: 100 800;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light;
+
+  /* 纸面：从页面地面到抬起的面板 */
+  --paper: #f8fbf6;
+  --paper-raised: #ffffff;
+  --paper-deep: #eff6f0;
+  --gray-2: #a9bdb3;
+
+  /* 文字：深松墨，弱化标签用足够深的灰绿 */
+  --ink: #1f332d;
+  --text: #2c4039;
+  --text-muted: #4d635b;
+  --text-faint: #5c7068;
+  --text-disabled: #9aa9a1;
+
+  /* 边界：中性 hairline 为主，绿线用于强调 */
+  --rule: rgb(31 51 45 / 0.12);
+  --rule-strong: rgb(31 111 92 / 0.28);
+  --edge: #7c9187;
+
+  /* 主色：深海绿 */
+  --accent: #1f6f5c;
+  --accent-strong: #175648;
+  --accent-soft: #5e9e8b;
+  --accent-deep: #15463c;
+  --on-accent: #ffffff;
+
+  /* 暖杏：只做填充、标签和路线点缀 */
+  --sun: #c4823f;
+  --sun-deep: #8a5a22;
+  --sun-soft: #f4e3c9;
+
+  /* 海玻璃蓝 */
+  --patina: #3e8fa8;
+  --patina-pale: #dceff3;
+  --patina-deep: #2a7388;
+  --patina-oxide: #236377;
+
+  /* 语义色 */
+  --vermilion: #c0493d;
+  --vermilion-strong: #a33a30;
+  --vermilion-soft: #fbe9e6;
+
+  /* 浅色仪表面 */
+  --instrument: #eaf2ec;
+  --instrument-deep: #e1ece4;
+  --instrument-raised: #ffffff;
+  --instrument-text: #1f332d;
+  --instrument-muted: #4d635b;
+
+  /* 地图：亮色地图上的独立 chrome，不复用页面 instrument */
+  --map-marker-bg: #1f6f5c;
+  --map-marker-text: #ffffff;
+  --map-marker-border: #ffffff;
+  --map-info-bg: #ffffff;
+  --map-info-text: #1f332d;
+
+  /* 遮罩 */
+  --scrim: rgb(31 51 45 / 0.32);
+  --loading-scrim: rgb(248 251 246 / 0.92);
+
+  /* 字体 */
+  --font-ui: "Albert Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
+    system-ui, sans-serif;
+  --font-display: "Alumni Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
+    system-ui, sans-serif;
+  --font-body: "Albert Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
+    system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas,
+    monospace;
+
+  /* 字号 */
+  --type-display: clamp(2.4rem, 3.6vw, 3.4rem);
+  --type-headline: clamp(1.5rem, 2vw, 1.85rem);
+  --type-body: 0.9375rem;
+  --type-small: 0.875rem;
+  --type-ui: 0.8125rem;
+  --type-label: 0.75rem;
+  --type-micro: 0.6875rem;
+
+  /* 形状：小圆角，不做大圆角卡片 */
+  --radius-sm: 3px;
+  --radius-md: 8px;
+  --radius-pill: 999px;
+
+  --control-md: 32px;
+  --control-lg: 44px;
+
+  /* 间距节奏 */
+  --gutter: clamp(20px, 4vw, 48px);
+  --section-pad: clamp(56px, 7vw, 96px);
+  --max-width: 1320px;
+
+  /* 深度：柔和青灰环境阴影，不用黑色重影 */
+  --lift-1: 0 12px 32px rgb(31 51 45 / 0.1);
+  --lift-dialog: 0 24px 70px rgb(31 51 45 / 0.16);
+  --glow-accent: 0 10px 30px rgb(31 111 92 / 0.12);
+
+  /* 动效 */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-1: 120ms;
+  --dur-2: 220ms;
+  --dur-3: 420ms;
+
+  /* 旧组件沿用的别名 */
+  --ease: var(--ease-out);
+  --quick: var(--dur-1);
+  --settle: var(--dur-2);
+  --focus-ring: 2px solid var(--patina-deep);
+}

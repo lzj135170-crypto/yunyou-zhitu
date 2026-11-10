@@ -1,0 +1,98 @@
+# -*- coding: utf-8 -*-
+#
+# ⚠️ 上面这一行【不能删】，删了 pip 就会读不动这个文件。
+#
+# 原因：pip 读 requirements 文件时用的是系统本地编码（中文 Windows 上是 cp936/GBK），
+# 不是 UTF-8。而本文件是 UTF-8 保存的、又带中文注释，于是那些中文字节会被
+# 强行按 GBK 解析。多数情况下碰巧能凑成合法的 GBK 双字节，看起来没事；
+# 但只要出现一个凑不上的字节序列，pip 就直接抛
+#   UnicodeDecodeError: 'gbk' codec can't decode byte 0xa3 ...
+# 整个安装失败。【这个坑真实触发过】：加了「向量检索 + 嵌入」这行注释后，
+# 「检」字的 UTF-8 字节 \xe6\xa3\x80 里 \x80 落单，pip 当场崩。
+#
+# 带编码声明后 pip 会按 UTF-8 解码（实测 100+ 行全部正确解析）。
+# 也可以把注释改成纯英文来绕开，但那样会丢掉下面 torch 和 Milvus 那两段的说明，
+# 而它们记录的是会让人踩坑的差异（CPU 版 torch、Milvus standalone 拉不到镜像）。
+
+fastapi==0.115.13
+uvicorn==0.34.0
+sqlalchemy==2.0.41
+alembic==1.20.1
+psycopg2-binary==2.9.10
+pydantic-settings==2.7.1
+bcrypt==5.0.0
+PyJWT==2.13.0
+redis==8.1.0
+
+# LangGraph 多智能体编排
+langgraph==1.1.2
+langchain-core==1.2.18
+langchain-deepseek==1.0.1
+# 第二模型 MiMo 走 OpenAI 兼容端点（https://api.xiaomimimo.com/v1），
+# 所以直接用 langchain-openai，不引厂商专用 SDK。
+langchain-openai==1.1.11
+langgraph-checkpoint-postgres==3.0.5
+psycopg[binary]==3.3.3
+psycopg-pool==3.3.0
+
+# ---------- RAG：向量检索 + 嵌入 ----------
+#
+# ⚠️ 下面这行 extra-index-url 不能删，它决定了装到的是 GPU 版还是 CPU 版 torch。
+#
+# PyPI（以及清华源）上 Windows 的 torch 轮子【只有 CPU 版】，124MB，不带任何
+# nvidia-* 依赖。装上去不报错、代码也能跑，但 torch.cuda.is_available() 是 False，
+# 嵌入编码会退回 CPU——安静地慢十几倍，很难联想到是装错了包。
+# CUDA 版只在 PyTorch 自己的索引里，文件名带 "+cu130" 后缀，体积 1.9GB。
+#
+# 本项目实测：download.pytorch.org 可达（7.3 MB/s），
+# 而国内的 aliyun / SJTU 镜像反而只有 0.29 MB/s，所以直接用官方源更快。
+#
+# 验证装对了没：python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
+# 期望输出 2.14.1+cu130 True
+--extra-index-url https://download.pytorch.org/whl/cu130
+torch==2.14.1+cu130
+
+# 嵌入模型运行时。bge-m3 权重已下到 ../models/bge-m3/，见 app/config.py 的 EMBEDDING_MODEL
+sentence-transformers==6.1.0
+
+# 向量库。
+#
+# 用的是 Milvus Lite（进程内，权重文件就是个本地 .db），不是 Milvus standalone——
+# 后者要等 Docker 起 etcd + MinIO + Milvus 三个容器，
+# 而本机 Docker Hub 和 GitHub 都不通，镜像和 compose 文件都下不来。
+# 代价是单写入进程，但这个项目的量级（几份攻略文档）远够用。
+pymilvus==2.6.17
+milvus-lite==3.2.1
+
+# 文档解析
+pypdf==6.20.0
+# ⚠️ jieba 在 Phase 3 删掉了：它只服务手写 BM25 的词频表，
+# 而那套东西换成了 BGE-M3 稀疏头（词权重由模型学出来，不需要分词器）。
+# 顺带少掉的是"入库侧和检索侧必须用同一套分词"那条只能靠人记住的纪律。
+
+# 天气数据源。
+#
+# Weather Agent 用 httpx 调 Open-Meteo（免费、不要 key、认中文地名），
+# 这是五个专家里唯一接真实外部数据的那个。
+#
+# 之前 httpx 只是被 langgraph-sdk 之类的包顺带装上的传递依赖，
+# 现在代码里直接 import 了它，就必须显式声明——
+# 否则哪天上游把依赖换掉，这边会在运行时才炸，而且报错指向
+# "No module named httpx"，跟天气功能毫无关联，很难联想过去。
+httpx==0.28.1
+
+# ---------- MCP：天气 MCP server / client ----------
+#
+# 用官方 mcp SDK，不引 langchain-mcp-adapters：天气节点是确定性调用，
+# 不需要把 MCP tool 转成 LangChain tool，少一层依赖就少一类版本冲突。
+#
+# mcp 2.x 依赖 httpx2，和当前 langchain/httpx 体系不兼容，固定 1.30.0。
+mcp==1.30.0
+# weather MCP server 里用 anyio.to_thread.run_sync 调同步 httpx，
+# 避免阻塞 server 的 event loop。mcp 本身也会装它，但代码直接 import 了，
+# 按项目习惯显式声明，防止以后上游换依赖时运行时才炸。
+anyio==4.15.1
+# mcp 的 SSE/streamable-http 依赖 sse-starlette；新版要求 starlette>=0.49，
+# 而 fastapi 0.115 要求 starlette<0.47，固定到可在当前 Starlette 下工作的版本。
+sse-starlette==3.0.2
+

@@ -1,0 +1,103 @@
+# Milvus standalone（etcd + MinIO + Milvus 三个容器）。
+#
+# ⚠️ 现在【还没用上它】。项目的向量库是 deploy/pgvector 那个容器，
+#    这份配置是为了"数据多起来之后能一条命令切过去"而提前准备好的。
+#
+# 为什么现在就把它下下来并验证一遍：
+# 镜像拉取是整件事里最慢、最容易失败的一步（网络不通、源上没缓存、tag 对不上）。
+# 把它和写代码耦合在一起，出了问题很难分清是"代码写错了"还是"镜像根本没拉下来"。
+# 拉完起一次确认能正常工作，然后停掉——常驻要吃 2—4 GB 内存，现在不需要。
+#
+# 启用方式：
+#     docker compose -f deploy/milvus/docker-compose.yml up -d
+# 停掉（保留数据）：
+#     docker compose -f deploy/milvus/docker-compose.yml stop
+#
+# ⚠️ 镜像 tag 和 Milvus 官方 v2.5.7 的 standalone compose 严格对齐。
+#    本机的镜像来自国内加速源，名字带前缀（docker.1panel.live/...），
+#    已经用 docker tag 打成了规范名。换版本时三个 tag 要一起换——
+#    Milvus 对 etcd 和 MinIO 的版本有兼容要求，只换中间那个会起不来。
+#
+# 端口说明（和项目的其它服务不冲突）：
+#     19530  Milvus gRPC，客户端连这个
+#     9091   Milvus 健康检查和指标
+#     9000   MinIO S3 API
+#     9001   MinIO 控制台（浏览器打开可以看 Milvus 存的对象）
+#     etcd 不对外暴露端口，只在 compose 的内部网络里
+
+services:
+  etcd:
+    container_name: milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.5
+    environment:
+      # 自动压缩：etcd 是 Milvus 的元数据存储，长期运行会把历史版本都留着。
+      # 保留最近 1000 个 revision，够用的同时不会无限膨胀。
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - etcd_data:/etcd
+    # etcd 的端口【不映射到宿主机】：只有 Milvus 需要连它，
+    # 暴露出去除了多一个被扫的攻击面没有任何好处。
+    command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  minio:
+    container_name: milvus-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      # 凭据从 deploy/milvus/.env 读取；未设置时 compose 直接报错退出，
+      # 不再回退到 minioadmin 这种默认口令。
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?MinIO 用户名未设置：复制 .env.example 为 .env 并填写}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?MinIO 密码未设置：复制 .env.example 为 .env 并填写}
+    ports:
+      # 只绑回环地址，避免对象存储控制台暴露到局域网。
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio_data:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  standalone:
+    container_name: milvus-standalone
+    image: milvusdb/milvus:v2.5.7
+    command: ["milvus", "run", "standalone"]
+    # Milvus 需要一些被 Docker 默认 seccomp 策略挡住的系统调用。
+    # 这是官方 compose 里的写法，不写的话容器起来后会自己退出。
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    volumes:
+      - milvus_data:/var/lib/milvus
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      # ⚠️ start_period 给到 90 秒。Milvus 启动要加载索引、连 etcd 和 MinIO，
+      # 头几十秒 healthz 必然是不通的。这个值给小了，容器会被反复判定为
+      # unhealthy 然后重启，表现出来就是"一直起不来"，而日志里看不出原因。
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    depends_on:
+      - etcd
+      - minio
+
+volumes:
+  etcd_data:
+  minio_data:
+  milvus_data:

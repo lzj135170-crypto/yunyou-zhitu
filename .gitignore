@@ -1,0 +1,67 @@
+# 密钥与本地配置
+#
+# ⚠️ 这一条是【防泄露】的，不是整洁问题。
+# backend/.env 里存着数据库密码、JWT 签名密钥、Redis 密码和 DeepSeek API key。
+# 一旦被提交，它们会永远留在 git 历史里 —— 即使后续提交把文件删掉，
+# 历史提交里那份还原样躺着，任何能 clone 的人都能翻出来。
+# 到时候只能改密钥 + 重写历史，两件事都很麻烦。
+#
+# 所以这里要覆盖得宽一点：.env 的各种变体（.env.local / .env.prod / .env.bak）
+# 都要挡住。只写一行 ".env" 挡不住 "backend/.env.backup" 这种。
+.env
+.env.*
+*.env
+!.env.example
+
+# 模型权重与下载缓存
+#
+# 这两项加起来 4.5GB，而且都能重新下载得到，不该进版本库：
+#   models/    bge-m3（2.2GB）+ bge-reranker-v2-m3（2.2GB）+ 解压出来的下载缓存
+#   .cache/    pip、魔搭、pgvector 源码包等下载产物
+#
+# 只忽略根目录的 models/；backend/app/models/ 是 ORM 源码，必须跟踪。
+/models/
+.cache/
+
+# Python
+backend/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# 测试与覆盖率产物
+.coverage
+htmlcov/
+
+# 数据库/代码迁移备份（含用户数据，绝不入库）
+backend/backups/
+*.dump
+
+# 第三方语料不随公开仓库分发；只保留自写示例
+knowledge/*.md
+!knowledge/sample-guide.md
+
+# 评估过程产物；只保留脱敏后的文档
+backend/eval/*
+!backend/eval/RESULTS.md
+!backend/eval/PHASE3_PREREG.md
+
+# Docker 相关的本地产物（compose 的具名卷不落在这里，但以防万一）
+deploy/**/volumes/
+
+# 前端依赖与构建产物
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# 高德 JS API key 的本地配置（公开示例另存为 map-config.example.js）
+frontend/public/map-config.js
+
+# 个人资料（保留本机，不进入版本库）
+docs/个人简历*
+
+# 编辑器与系统
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini

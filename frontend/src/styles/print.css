@@ -1,0 +1,744 @@
+/* 打印主题：屏幕是薄荷日光，打印回到纯白文档。
+ *
+ * 打印时必须做到：
+ * - 浅色 token 收敛成纸面白；
+ * - 隐藏导航、目录、操作按钮、tab、地图模式切换和调整输入；
+ * - 地图改用静态图；
+ * - 行程、天气说明、备选路线、完整回复强制展开；
+ * - CountUp / Sparkline / 织线 / 温度条直接到终态；
+ * - 估算、来源、参考价等诚实说明保留在纸面。
+ */
+
+@page {
+  size: A4;
+  margin: 12mm 13mm;
+}
+
+@media print {
+  :root {
+    color-scheme: light;
+
+    --paper: #fff;
+    --paper-raised: #fff;
+    --paper-deep: #f7f7f7;
+    --gray-2: #c8d3cd;
+
+    --ink: #111;
+    --text: #222;
+    --text-muted: #444;
+    --text-faint: #555;
+    --text-disabled: #777;
+
+    --rule: #ddd;
+    --rule-strong: #bbb;
+    --edge: #999;
+
+    --accent: #1f6f5c;
+    --accent-strong: #175648;
+    --accent-soft: #5e9e8b;
+    --accent-deep: #15463c;
+    --on-accent: #fff;
+
+    --sun: #c4823f;
+    --sun-deep: #8a5a22;
+    --sun-soft: #f4e3c9;
+
+    --patina: #2a7388;
+    --patina-pale: #dceff3;
+    --patina-deep: #236377;
+    --patina-oxide: #236377;
+
+    --vermilion: #a33a30;
+    --vermilion-strong: #a33a30;
+    --vermilion-soft: #f7e7e7;
+
+    --instrument: #f2f2f2;
+    --instrument-deep: #e6e6e6;
+    --instrument-raised: #fff;
+    --instrument-text: #111;
+    --instrument-muted: #444;
+
+    --map-marker-bg: #1f6f5c;
+    --map-marker-text: #fff;
+    --map-marker-border: #fff;
+    --map-info-bg: #fff;
+    --map-info-text: #111;
+    --scrim: transparent;
+    --loading-scrim: #fff;
+
+    --lift-1: none;
+    --lift-dialog: none;
+    --glow-accent: none;
+
+    --quick: 0ms;
+    --settle: 0ms;
+    --dur-1: 0ms;
+    --dur-2: 0ms;
+    --dur-3: 0ms;
+  }
+
+  html,
+  body {
+    min-width: 0;
+    background: #fff;
+    color: var(--text);
+  }
+
+  body {
+    background-image: none;
+    font-size: 10.5pt;
+    line-height: 1.6;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .container {
+    max-width: none;
+    padding: 0;
+  }
+
+  .page {
+    padding: 0;
+  }
+
+  .view-frame {
+    transform: none !important;
+  }
+
+  /* 屏幕控件与装饰 */
+  .app-header,
+  .result-rail,
+  .skip-link,
+  .toast,
+  .loading-screen,
+  .boot-screen,
+  .scroll-progress,
+  .view-sweep,
+  .adjust-section,
+  .dialog,
+  .tabs,
+  .gallery-rail__nav,
+  .trip-map__canvas,
+  .trip-map__toggle,
+  .trip-map__overlay,
+  .trip-map__note,
+  .food-nearby,
+  .answer-toggle,
+  .day__map-link,
+  .route-origin,
+  .route-hint,
+  .route-empty,
+  .route-state,
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  .section-head__actions .btn,
+  .hero__actions,
+  .food__action,
+  .hotel-poi__plan,
+  .day__chevron {
+    display: none !important;
+  }
+
+  a {
+    color: #236377 !important;
+    text-decoration: underline;
+    text-underline-offset: 0.16em;
+  }
+
+  /* 文档结构：从 12 栏仪表盘回到单列纸面 */
+  .result-layout,
+  .result-main,
+  .result-dashboard,
+  .dash-cell {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .dash-cell {
+    grid-column: auto !important;
+  }
+
+  .result-section {
+    margin: 0 0 8mm !important;
+    padding: 4mm 0 !important;
+    border: 0 !important;
+    border-top: 1px solid #ddd !important;
+    border-radius: 0 !important;
+    break-inside: auto;
+  }
+
+  .dash-cell:first-child .result-section {
+    border-top: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  .section-head {
+    padding-bottom: 2mm !important;
+    border-bottom: 1px solid #ccc !important;
+    break-after: avoid;
+  }
+
+  .section-head h2 {
+    font-size: 13pt !important;
+  }
+
+  .section-head h3 {
+    font-size: 11pt !important;
+  }
+
+  .section-head p {
+    max-width: none !important;
+    color: #444 !important;
+    font-size: 9pt !important;
+  }
+
+  h2,
+  h3 {
+    break-after: avoid;
+  }
+
+  /* Hero */
+  .hero {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.15fr) minmax(54mm, 0.85fr) !important;
+    gap: 8mm !important;
+    align-items: start !important;
+  }
+
+  .hero__title {
+    font-size: 26pt !important;
+    line-height: 1.05 !important;
+  }
+
+  .hero__eyebrow {
+    color: #15463c !important;
+    font-size: 7.5pt !important;
+  }
+
+  .hero__overview,
+  .hero__overview--muted {
+    display: block !important;
+    max-width: none !important;
+    overflow: visible !important;
+    color: #222 !important;
+    font-size: 9.5pt !important;
+    line-height: 1.65 !important;
+    -webkit-line-clamp: unset !important;
+  }
+
+  .hero__media {
+    height: 58mm !important;
+    min-height: 0 !important;
+  }
+
+  .hero__media-tag {
+    color: #333 !important;
+    background: #fff !important;
+    border: 1px solid #ccc !important;
+  }
+
+  .hero__credit,
+  .attraction__credit,
+  .hotel-disclaimer,
+  .route-disclaimer,
+  .weather-source,
+  .budget-caption {
+    color: #555 !important;
+    font-size: 8pt !important;
+  }
+
+  .photo-plate,
+  .hero__map,
+  .hero__placeholder {
+    min-height: 0 !important;
+    background: #f4f4f4 !important;
+    border: 1px solid #ccc !important;
+    border-radius: 4px !important;
+  }
+
+  .photo-plate__fallback,
+  .hero__placeholder {
+    background: #f2f2f2 !important;
+    background-image: none !important;
+  }
+
+  .photo-plate__initial,
+  .hero__placeholder-initial {
+    color: #1f6f5c !important;
+  }
+
+  .photo-plate__rule,
+  .hero__placeholder-rule {
+    background: #bbb !important;
+  }
+
+  .photo-plate__hint,
+  .hero__placeholder-hint {
+    color: #555 !important;
+  }
+
+  /* 关键数字 */
+  .stat-bar {
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    margin-top: 5mm !important;
+    padding: 2mm 3mm !important;
+    background: #fff !important;
+    border: 1px solid #ddd !important;
+    border-radius: 4px !important;
+    break-inside: avoid;
+  }
+
+  .stat-bar__item {
+    padding: 0 2mm !important;
+    border-left: 1px solid #ddd !important;
+  }
+
+  .stat-bar__item dt {
+    color: #555 !important;
+    font-size: 6.5pt !important;
+  }
+
+  .stat-bar__value {
+    overflow: visible !important;
+    color: #111 !important;
+    font-size: 13pt !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+
+  .stat-bar__suffix {
+    color: #444 !important;
+    font-size: 7pt !important;
+  }
+
+  .count-up__visual {
+    display: none !important;
+  }
+
+  .count-up .sr-only {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    white-space: normal !important;
+    clip: auto !important;
+    border: 0 !important;
+  }
+
+  /* 地图：改用静态图，保留图例 */
+  .map-frame {
+    height: auto !important;
+    margin-top: 3mm !important;
+    background: #fff !important;
+    border: 1px solid #ccc !important;
+    border-radius: 4px !important;
+    break-inside: avoid;
+  }
+
+  .trip-map {
+    height: auto !important;
+    min-height: 0 !important;
+    background: #fff !important;
+  }
+
+  .trip-map__print {
+    display: block !important;
+    width: 100% !important;
+    height: 72mm !important;
+    object-fit: cover;
+    border: 1px solid #ccc !important;
+    border-radius: 3px !important;
+  }
+
+  .trip-map__print-empty {
+    display: block !important;
+    padding: 8mm !important;
+    color: #555 !important;
+    text-align: center;
+    border: 1px dashed #bbb !important;
+    border-radius: 3px !important;
+    font-size: 9pt !important;
+  }
+
+  .trip-map__placeholder {
+    position: static !important;
+    padding: 8mm !important;
+    color: #444 !important;
+    background: #f7f7f7 !important;
+  }
+
+  .map-legend {
+    gap: 2mm 5mm !important;
+    margin-top: 2mm !important;
+  }
+
+  .map-legend__item {
+    color: #444 !important;
+    font-size: 8pt !important;
+  }
+
+  .map-legend__item b {
+    color: #111 !important;
+  }
+
+  /* 天气 */
+  .weather-strip {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(23mm, 1fr)) !important;
+    gap: 2mm !important;
+    padding-bottom: 0 !important;
+    overflow: visible !important;
+  }
+
+  .weather-day {
+    flex: none !important;
+    width: auto !important;
+    padding: 2mm !important;
+    background: #fff !important;
+    border: 1px solid #ddd !important;
+    break-inside: avoid;
+  }
+
+  .weather-day__date span,
+  .weather-day__precip {
+    color: #555 !important;
+  }
+
+  .weather-day__range,
+  .weather-day__precip-track {
+    background: #e5e5e5 !important;
+  }
+
+  .weather-day__range-fill,
+  .weather-day__precip-track span {
+    transform: none !important;
+  }
+
+  .weather-trend {
+    border-top-color: #ddd !important;
+  }
+
+  .sparkline__line {
+    stroke: #1f6f5c !important;
+    stroke-dashoffset: 0 !important;
+  }
+
+  .sparkline__area {
+    fill: #eee !important;
+  }
+
+  .weather-details {
+    border-top-color: #ddd !important;
+  }
+
+  .weather-details summary {
+    color: #333 !important;
+  }
+
+  .weather-summary,
+  .weather-advice {
+    max-width: none !important;
+    color: #222 !important;
+  }
+
+  .note {
+    color: #444 !important;
+    background: #f7f7f7 !important;
+    border-color: #ddd !important;
+  }
+
+  .note--error {
+    color: #a33 !important;
+    background: #f7e7e7 !important;
+  }
+
+  /* 每日行程：全部展开，织线到终态 */
+  .itinerary-thread::before {
+    background: #bbb !important;
+    transform: scaleY(1) !important;
+  }
+
+  .day {
+    break-inside: avoid;
+  }
+
+  .day__node {
+    background: #1f6f5c !important;
+    opacity: 1 !important;
+  }
+
+  .day.is-selected .day__node {
+    background: #15463c !important;
+  }
+
+  .day__label {
+    color: #15463c !important;
+  }
+
+  .day__content {
+    display: block !important;
+    grid-template-rows: 1fr !important;
+  }
+
+  .day__content-inner {
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .day__summary {
+    display: none !important;
+  }
+
+  .day__slot {
+    grid-template-columns: 14mm minmax(0, 1fr) !important;
+    gap: 3mm !important;
+    padding: 2mm 0 !important;
+    border-bottom-color: #ddd !important;
+  }
+
+  .day__slot p,
+  .day__summary {
+    max-width: none !important;
+  }
+
+  .day__slot-label {
+    color: #555 !important;
+  }
+
+  .day__photo {
+    width: 38mm !important;
+    margin-top: 2mm !important;
+  }
+
+  .day__photo img {
+    height: 26mm !important;
+  }
+
+  .day__photo figcaption {
+    color: #555 !important;
+  }
+
+  /* 景点：横向轨道展开为两列网格 */
+  .attraction-rail {
+    margin-top: 3mm !important;
+  }
+
+  .gallery-rail__track {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 3mm !important;
+    padding-bottom: 0 !important;
+    overflow: visible !important;
+  }
+
+  .attraction-card,
+  .attraction-card--feature {
+    flex: none !important;
+    width: auto !important;
+    background: #fff !important;
+    border: 1px solid #ddd !important;
+    break-inside: avoid;
+  }
+
+  .attraction-card__media,
+  .attraction-card--feature .attraction-card__media {
+    height: 34mm !important;
+  }
+
+  .attraction-card__reason,
+  .attraction-card--feature .attraction-card__reason {
+    display: block !important;
+    overflow: visible !important;
+    color: #222 !important;
+    -webkit-line-clamp: unset !important;
+  }
+
+  .attraction-card__coord {
+    color: #555 !important;
+  }
+
+  /* 美食、酒店、路线、提示 */
+  .food-card,
+  .hotel-poi,
+  .hotel-area,
+  .route-day,
+  .route-leg,
+  .source-list li,
+  .budget-ledger__row,
+  .tip-list li {
+    break-inside: avoid;
+  }
+
+  .food-card {
+    background: #fff !important;
+    border-color: #ddd !important;
+  }
+
+  .food-card__meta {
+    color: #1f6f5c !important;
+  }
+
+  .tag,
+  .tag--accent,
+  .tag--patina,
+  .tag--danger {
+    color: #333 !important;
+    background: #f7f7f7 !important;
+    border-color: #ccc !important;
+  }
+
+  .tag--accent {
+    color: #8a5a22 !important;
+    background: #f7f0dd !important;
+    border-color: #d8bf92 !important;
+  }
+
+  .tag--patina {
+    color: #236377 !important;
+    background: #dceff3 !important;
+    border-color: #9cc3c1 !important;
+  }
+
+  .tag--danger {
+    color: #a33 !important;
+    background: #f7e7e7 !important;
+    border-color: #d9a3a3 !important;
+  }
+
+  .hotel-area__tier-print {
+    display: block !important;
+    margin-top: 2mm !important;
+    color: #444 !important;
+    font-size: 8pt !important;
+  }
+
+  .hotel-poi {
+    border-color: #ddd !important;
+    background: #fff !important;
+  }
+
+  .hotel-poi__thumb {
+    height: 30mm !important;
+    border-bottom-color: #ddd !important;
+  }
+
+  .hotel-state {
+    color: #444 !important;
+    background: #f7f7f7 !important;
+    border-color: #ddd !important;
+  }
+
+  .hotel-state--error {
+    color: #a33 !important;
+    background: #f7e7e7 !important;
+  }
+
+  .route-hotel,
+  .route-stop {
+    color: #333 !important;
+    background: #f7f7f7 !important;
+  }
+
+  .route-day,
+  .route-leg,
+  .route-legs,
+  .source-list {
+    border-color: #ddd !important;
+  }
+
+  .route-leg__metrics,
+  .route-leg__summary,
+  .route-day__totals,
+  .route-alt__row {
+    color: #444 !important;
+  }
+
+  .route-warnings li,
+  .route-stale {
+    color: #a33 !important;
+  }
+
+  .route-mode i {
+    border: 1px solid rgb(31 51 45 / 0.2);
+  }
+
+  .budget-ledger__row--total dd {
+    color: #1f6f5c !important;
+    font-size: 20pt !important;
+  }
+
+  .budget-assumption {
+    color: #333 !important;
+    background: #f7f7f7 !important;
+    border-left-color: #15463c !important;
+  }
+
+  .tip-list,
+  .tip-list li {
+    border-color: #ddd !important;
+  }
+
+  .warning-box {
+    background: #f7e7e7 !important;
+    border-color: #d9a3a3 !important;
+  }
+
+  .warning-box__head,
+  .warning-box p {
+    color: #a33 !important;
+  }
+
+  /* 完整回复：打印时始终展示 */
+  .answer-text {
+    display: block !important;
+    max-width: none !important;
+    margin-top: 3mm !important;
+    color: #222 !important;
+    font-size: 9.5pt !important;
+    line-height: 1.7 !important;
+  }
+
+  /* 历史页 */
+  .history-card {
+    background: #fff !important;
+    border-color: #ddd !important;
+    break-inside: avoid;
+  }
+
+  .history-card__monogram {
+    color: #15463c !important;
+    background: #eaf2ec !important;
+    background-image: none !important;
+    border-color: #9cc3c1 !important;
+  }
+
+  .empty-state {
+    background: #f7f7f7 !important;
+    border-color: #ddd !important;
+  }
+
+  /* 避免小模块被拆开 */
+  .stat-bar,
+  .weather-day,
+  .attraction-card,
+  .food-card,
+  .hotel-poi,
+  .route-leg,
+  .source-list li,
+  .budget-ledger__row {
+    break-inside: avoid;
+  }
+}
